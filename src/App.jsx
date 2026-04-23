@@ -65,7 +65,7 @@ function App() {
 
   setStatus('Submitting form...')
 
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbwWhYPLziiCBhuybQUa1KZiqaCUa1hJf6DNyeWbQzye_EDUxGGHPOcCXBDisZ3jQO_CPg/exec'
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbxu9eN6snJoY_3hqI1R_DPTNNyI7IO8pEdTmeZpdNtqty2Ia0Q2i8u7qIpIcsz6IAqggA/exec'
   const formDataToSend = new FormData()
 
   // Append normal fields
