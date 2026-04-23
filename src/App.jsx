@@ -103,11 +103,15 @@ function App() {
     })
 
     const result = await response.text()
-    console.log(result)
+    console.log('Script response:', result)
 
-    setStatus('Form submitted successfully.')
-    setFormData(initialState)
-    e.target.reset()
+    if (result.trim() === 'Success') {
+      setStatus('Form submitted successfully.')
+      setFormData(initialState)
+      e.target.reset()
+    } else {
+      setStatus('Submission failed: ' + result)
+    }
 
   } catch (error) {
     console.error(error)
