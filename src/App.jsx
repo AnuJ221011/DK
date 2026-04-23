@@ -32,6 +32,15 @@ function App() {
     })
   }
 
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.readAsDataURL(file)
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = (error) => reject(error)
+    })
+}
+
   const getLocation = () => {
     if (!navigator.geolocation) {
       setStatus('Geolocation is not supported by this browser.')
@@ -59,39 +68,47 @@ function App() {
   e.preventDefault()
 
   if (!formData.latitude || !formData.longitude) {
-    setStatus('Error: Geolocation is mandatory.')
+    setStatus('Geolocation is mandatory.')
     return
   }
 
   setStatus('Submitting form...')
 
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbxu9eN6snJoY_3hqI1R_DPTNNyI7IO8pEdTmeZpdNtqty2Ia0Q2i8u7qIpIcsz6IAqggA/exec'
-  const formDataToSend = new FormData()
-
-  // Append normal fields
-  Object.keys(formData).forEach((key) => {
-    formDataToSend.append(key, formData[key])
-  })
-
-  // Append files manually
-  const fileInputs = ['frontBumper', 'leftSidePhoto', 'rightSidePhoto', 'rearBumper', 'fitnessCertificate']
-
-  fileInputs.forEach((field) => {
-    const files = e.target[field].files
-    for (let i = 0; i < files.length; i++) {
-      formDataToSend.append(field, files[i])
-    }
-  })
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbzfAcewSBh2M89odBvLAEKIal7-RyKKB_cIXYJI1dDJWJLef3lGB6mO849s7ycNvCqIKg/exec'
 
   try {
-    await fetch(scriptURL, {
+    const payload = { ...formData }
+
+    const fileInputs = [
+      'frontBumper',
+      'leftSidePhoto',
+      'rightSidePhoto',
+      'rearBumper',
+      'fitnessCertificate'
+    ]
+
+    for (let field of fileInputs) {
+      const files = e.target[field].files
+      payload[field] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const base64 = await convertToBase64(files[i])
+        payload[field].push(base64)
+      }
+    }
+
+    const response = await fetch(scriptURL, {
       method: 'POST',
-      body: formDataToSend
+      body: JSON.stringify(payload)
     })
+
+    const result = await response.text()
+    console.log(result)
 
     setStatus('Form submitted successfully.')
     setFormData(initialState)
     e.target.reset()
+
   } catch (error) {
     console.error(error)
     setStatus('Submission failed.')
