@@ -56,38 +56,47 @@ function App() {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+  e.preventDefault()
 
-    // Validate geolocation
-    if (!formData.latitude || !formData.longitude) {
-      setStatus('Error: Geolocation is mandatory. Please capture your location before submitting.')
-      return
-    }
-
-    setStatus('Submitting form...')
-
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzEMaOqGqlZOCKHvvgDTIJUtuvDCkTgus4fPx_rLsHdhuFN03tj6D5Hme4Tvr34lD9Fug/exec'
-    const formPayload = new FormData(e.target)
-
-    try {
-      const response = await fetch(scriptURL, {
-        method: 'POST',
-        body: formPayload
-      })
-
-      if (response.ok) {
-        setStatus('Form submitted successfully.')
-        setFormData(initialState)
-        e.target.reset()
-      } else {
-        setStatus('Error submitting form. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      setStatus('Submission failed. Check your internet connection.')
-    }
+  if (!formData.latitude || !formData.longitude) {
+    setStatus('Error: Geolocation is mandatory.')
+    return
   }
 
+  setStatus('Submitting form...')
+
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbwWhYPLziiCBhuybQUa1KZiqaCUa1hJf6DNyeWbQzye_EDUxGGHPOcCXBDisZ3jQO_CPg/exec'
+  const formDataToSend = new FormData()
+
+  // Append normal fields
+  Object.keys(formData).forEach((key) => {
+    formDataToSend.append(key, formData[key])
+  })
+
+  // Append files manually
+  const fileInputs = ['frontBumper', 'leftSidePhoto', 'rightSidePhoto', 'rearBumper', 'fitnessCertificate']
+
+  fileInputs.forEach((field) => {
+    const files = e.target[field].files
+    for (let i = 0; i < files.length; i++) {
+      formDataToSend.append(field, files[i])
+    }
+  })
+
+  try {
+    await fetch(scriptURL, {
+      method: 'POST',
+      body: formDataToSend
+    })
+
+    setStatus('Form submitted successfully.')
+    setFormData(initialState)
+    e.target.reset()
+  } catch (error) {
+    console.error(error)
+    setStatus('Submission failed.')
+  }
+}
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/70 sm:p-10">
