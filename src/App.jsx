@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const initialState = {
   name: '',
@@ -28,6 +28,9 @@ function App() {
   const [status, setStatus] = useState('')
   const [cabNumbers, setCabNumbers] = useState([])
   const [cabLoading, setCabLoading] = useState(true)
+  const [cabSearch, setCabSearch] = useState('')
+  const [cabOpen, setCabOpen] = useState(false)
+  const cabRef = useRef(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoMessage, setGeoMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -40,6 +43,16 @@ function App() {
       .then(data => setCabNumbers(data))
       .catch(() => setCabNumbers([]))
       .finally(() => setCabLoading(false))
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (cabRef.current && !cabRef.current.contains(e.target)) {
+        setCabOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const handleChange = (e) => {
@@ -179,13 +192,57 @@ function App() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-3">
-              <label htmlFor="cabNumber" className="block text-sm font-medium text-slate-700">Cab Number <span className="text-red-500">*</span></label>
-              <select id="cabNumber" name="cabNumber" value={formData.cabNumber} onChange={handleChange} required disabled={cabLoading} className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-wait">
-                <option value="">{cabLoading ? 'Loading...' : 'Select cab number'}</option>
-                {cabNumbers.map((cab) => (
-                  <option key={cab} value={cab}>{cab}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-slate-700">Cab Number <span className="text-red-500">*</span></label>
+              <div ref={cabRef} className="relative">
+                <button
+                  type="button"
+                  disabled={cabLoading}
+                  onClick={() => setCabOpen(o => !o)}
+                  className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-left text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-wait flex items-center justify-between"
+                >
+                  <span className={formData.cabNumber ? 'text-slate-900' : 'text-slate-400'}>
+                    {cabLoading ? 'Loading...' : formData.cabNumber || 'Select cab number'}
+                  </span>
+                  <svg className={`h-4 w-4 text-slate-500 transition-transform ${cabOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                {cabOpen && (
+                  <div className="absolute z-10 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-lg">
+                    <div className="p-2">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search cab number..."
+                        value={cabSearch}
+                        onChange={e => setCabSearch(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                      />
+                    </div>
+                    <ul className="max-h-52 overflow-y-auto pb-2">
+                      {cabNumbers
+                        .filter(cab => cab.toString().toLowerCase().includes(cabSearch.toLowerCase()))
+                        .map(cab => (
+                          <li
+                            key={cab}
+                            onClick={() => {
+                              setFormData(f => ({ ...f, cabNumber: cab }))
+                              setCabOpen(false)
+                              setCabSearch('')
+                            }}
+                            className={`cursor-pointer px-4 py-2 text-sm transition hover:bg-sky-50 hover:text-sky-700 ${formData.cabNumber === cab ? 'bg-sky-50 text-sky-700 font-medium' : 'text-slate-700'}`}
+                          >
+                            {cab}
+                          </li>
+                        ))}
+                      {cabNumbers.filter(cab => cab.toString().toLowerCase().includes(cabSearch.toLowerCase())).length === 0 && (
+                        <li className="px-4 py-2 text-sm text-slate-400">No results found</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+                <input type="hidden" name="cabNumber" value={formData.cabNumber} required />
+              </div>
             </div>
             <div className="space-y-3">
               <label htmlFor="auditDate" className="block text-sm font-medium text-slate-700">Audit Date <span className="text-red-500">*</span></label>
