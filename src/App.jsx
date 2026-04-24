@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const initialState = {
   name: '',
@@ -21,11 +21,26 @@ const interiorOptions = ['Good', 'OK', 'Bad - Not usable']
 const auditPassOptions = ['Good - Yes', 'OK - Yes', 'No - Accidental', 'No - Breakdown']
 const carAvailabilityOptions = ['Available', 'Not Available']
 
+const scriptURL = 'https://script.google.com/macros/s/AKfycbzfAcewSBh2M89odBvLAEKIal7-RyKKB_cIXYJI1dDJWJLef3lGB6mO849s7ycNvCqIKg/exec'
+
 function App() {
   const [formData, setFormData] = useState(initialState)
   const [status, setStatus] = useState('')
+  const [cabNumbers, setCabNumbers] = useState([])
+  const [cabLoading, setCabLoading] = useState(true)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoMessage, setGeoMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const isNotAvailable = formData.carAvailability === 'Not Available'
+
+  useEffect(() => {
+    fetch(scriptURL)
+      .then(res => res.json())
+      .then(data => setCabNumbers(data))
+      .catch(() => setCabNumbers([]))
+      .finally(() => setCabLoading(false))
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -46,11 +61,12 @@ function App() {
 
   const getLocation = () => {
     if (!navigator.geolocation) {
-      setStatus('Geolocation is not supported by this browser.')
+      setGeoMessage('Geolocation is not supported by this browser.')
       return
     }
 
-    setStatus('Fetching location...')
+    setGeoLoading(true)
+    setGeoMessage('')
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setFormData((current) => ({
@@ -58,11 +74,13 @@ function App() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
         }))
-        setStatus('Location captured successfully.')
+        setGeoLoading(false)
+        setGeoMessage('success')
       },
       (error) => {
         console.error('Error getting location:', error)
-        setStatus('Unable to capture location. Please allow location access.')
+        setGeoLoading(false)
+        setGeoMessage('Unable to capture location. Please allow location access.')
       }
     )
   }
@@ -75,9 +93,7 @@ function App() {
       return
     }
 
-    setStatus('Submitting form...')
-
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzfAcewSBh2M89odBvLAEKIal7-RyKKB_cIXYJI1dDJWJLef3lGB6mO849s7ycNvCqIKg/exec'
+    setSubmitting(true)
 
     try {
       const payload = { ...formData }
@@ -121,6 +137,8 @@ function App() {
     } catch (error) {
       console.error(error)
       setStatus('Submission failed.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -162,7 +180,12 @@ function App() {
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-3">
               <label htmlFor="cabNumber" className="block text-sm font-medium text-slate-700">Cab Number <span className="text-red-500">*</span></label>
-              <input type="text" id="cabNumber" name="cabNumber" value={formData.cabNumber} onChange={handleChange} required className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
+              <select id="cabNumber" name="cabNumber" value={formData.cabNumber} onChange={handleChange} required disabled={cabLoading} className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-wait">
+                <option value="">{cabLoading ? 'Loading...' : 'Select cab number'}</option>
+                {cabNumbers.map((cab) => (
+                  <option key={cab} value={cab}>{cab}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-3">
               <label htmlFor="auditDate" className="block text-sm font-medium text-slate-700">Audit Date <span className="text-red-500">*</span></label>
@@ -187,7 +210,21 @@ function App() {
           <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="mb-3 text-sm font-medium text-slate-700">Geolocation <span className="text-red-500">*</span></p>
-              <button type="button" onClick={getLocation} className="inline-flex items-center justify-center rounded-3xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-50">Capture Geolocation</button>
+              <button type="button" onClick={getLocation} disabled={geoLoading} className="inline-flex items-center justify-center gap-2 rounded-3xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-50 disabled:opacity-70 disabled:cursor-not-allowed">
+                {geoLoading && (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                )}
+                {geoLoading ? 'Fetching...' : 'Capture Geolocation'}
+              </button>
+              {geoMessage === 'success' && (
+                <p className="mt-2 text-sm font-medium text-green-600">Location captured successfully.</p>
+              )}
+              {geoMessage && geoMessage !== 'success' && (
+                <p className="mt-2 text-sm font-medium text-red-600">{geoMessage}</p>
+              )}
             </div>
             <div className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
               <p><span className="font-semibold text-slate-900">Latitude:</span> <span className={formData.latitude ? 'text-green-600 font-semibold' : ''}>{formData.latitude || '–'}</span></p>
@@ -268,10 +305,16 @@ function App() {
 
           <button
             type="submit"
-            disabled={isNotAvailable}
-            className="w-full rounded-3xl bg-slate-950 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 focus:ring-offset-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={isNotAvailable || submitting}
+            className="w-full rounded-3xl bg-slate-950 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 focus:ring-offset-slate-50 disabled:cursor-not-allowed disabled:opacity-40 inline-flex items-center justify-center gap-2"
           >
-            Submit Audit
+            {submitting && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {submitting ? 'Submitting...' : 'Submit Audit'}
           </button>
         </form>
 
