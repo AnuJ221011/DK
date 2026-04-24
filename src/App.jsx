@@ -6,12 +6,12 @@ const initialState = {
   email: '',
   cabNumber: '',
   auditDate: '',
-  auditName: '',
+  carAvailability: '',
   location: '',
   latitude: '',
   longitude: '',
   toolKit: '',
-  stephny: '',
+  stepney: '',
   onboardCharger: '',
   carInterior: '',
   physicalAuditPass: ''
@@ -19,10 +19,13 @@ const initialState = {
 
 const interiorOptions = ['Good', 'OK', 'Bad - Not usable']
 const auditPassOptions = ['Good - Yes', 'OK - Yes', 'No - Accidental', 'No - Breakdown']
+const carAvailabilityOptions = ['Available', 'Not Available']
 
 function App() {
   const [formData, setFormData] = useState(initialState)
   const [status, setStatus] = useState('')
+
+  const isNotAvailable = formData.carAvailability === 'Not Available'
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -34,12 +37,12 @@ function App() {
 
   const convertToBase64 = (file) => {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.readAsDataURL(file)
-        reader.onload = () => resolve(reader.result)
-        reader.onerror = (error) => reject(error)
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = (error) => reject(error)
     })
-}
+  }
 
   const getLocation = () => {
     if (!navigator.geolocation) {
@@ -65,59 +68,72 @@ function App() {
   }
 
   const handleSubmit = async (e) => {
-  e.preventDefault()
+    e.preventDefault()
 
-  if (!formData.latitude || !formData.longitude) {
-    setStatus('Geolocation is mandatory.')
-    return
-  }
+    if (!formData.latitude || !formData.longitude) {
+      setStatus('Geolocation is mandatory.')
+      return
+    }
 
-  setStatus('Submitting form...')
+    setStatus('Submitting form...')
 
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbzfAcewSBh2M89odBvLAEKIal7-RyKKB_cIXYJI1dDJWJLef3lGB6mO849s7ycNvCqIKg/exec'
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzfAcewSBh2M89odBvLAEKIal7-RyKKB_cIXYJI1dDJWJLef3lGB6mO849s7ycNvCqIKg/exec'
 
-  try {
-    const payload = { ...formData }
+    try {
+      const payload = { ...formData }
 
-    const fileInputs = [
-      'frontBumper',
-      'leftSidePhoto',
-      'rightSidePhoto',
-      'rearBumper',
-      'fitnessCertificate'
-    ]
+      const fileInputs = [
+        'frontBumper',
+        'leftSidePhoto',
+        'rightSidePhoto',
+        'rearBumper',
+        'fitnessCertificate',
+        'carInteriorPhoto',
+        'odometerDashboard'
+      ]
 
-    for (let field of fileInputs) {
-      const files = e.target[field].files
-      payload[field] = []
+      for (let field of fileInputs) {
+        const files = e.target[field]?.files ?? []
+        payload[field] = []
 
-      for (let i = 0; i < files.length; i++) {
-        const base64 = await convertToBase64(files[i])
-        payload[field].push(base64)
+        for (let i = 0; i < files.length; i++) {
+          const base64 = await convertToBase64(files[i])
+          payload[field].push(base64)
+        }
       }
+
+      const response = await fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+
+      const result = await response.text()
+      console.log('Script response:', result)
+
+      if (result.trim() === 'Success') {
+        setStatus('Form submitted successfully.')
+        setFormData(initialState)
+        e.target.reset()
+      } else {
+        setStatus('Submission failed: ' + result)
+      }
+
+    } catch (error) {
+      console.error(error)
+      setStatus('Submission failed.')
     }
-
-    const response = await fetch(scriptURL, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-
-    const result = await response.text()
-    console.log('Script response:', result)
-
-    if (result.trim() === 'Success') {
-      setStatus('Form submitted successfully.')
-      setFormData(initialState)
-      e.target.reset()
-    } else {
-      setStatus('Submission failed: ' + result)
-    }
-
-  } catch (error) {
-    console.error(error)
-    setStatus('Submission failed.')
   }
-}
+
+  const fileUploadFields = [
+    { id: 'frontBumper', label: 'Car Front Bumper' },
+    { id: 'leftSidePhoto', label: 'Car Left Side Photo' },
+    { id: 'rightSidePhoto', label: 'Car Right Side Photo' },
+    { id: 'rearBumper', label: 'Car Rear Bumper' },
+    { id: 'fitnessCertificate', label: 'Fitness Certificate' },
+    { id: 'carInteriorPhoto', label: 'Car Interior Photo' },
+    { id: 'odometerDashboard', label: 'Odometer Dashboard' }
+  ]
+
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/70 sm:p-10">
@@ -153,8 +169,13 @@ function App() {
               <input type="date" id="auditDate" name="auditDate" value={formData.auditDate} onChange={handleChange} required className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
             </div>
             <div className="space-y-3">
-              <label htmlFor="auditName" className="block text-sm font-medium text-slate-700">Audit Name <span className="text-red-500">*</span></label>
-              <input type="text" id="auditName" name="auditName" value={formData.auditName} onChange={handleChange} required className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
+              <label htmlFor="carAvailability" className="block text-sm font-medium text-slate-700">Car Availability <span className="text-red-500">*</span></label>
+              <select id="carAvailability" name="carAvailability" value={formData.carAvailability} onChange={handleChange} required className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100">
+                <option value="">Select availability</option>
+                {carAvailabilityOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -174,54 +195,56 @@ function App() {
             </div>
           </div>
 
+          {isNotAvailable && (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-700">
+              Car is marked as Not Available — photo uploads and submission are disabled.
+            </div>
+          )}
+
           <div className="grid gap-6 lg:grid-cols-2">
-            {[
-              { id: 'frontBumper', label: 'Car Front Bumper <span className="text-red-500">*</span>' },
-              { id: 'leftSidePhoto', label: 'Car Left Side Photo <span className="text-red-500">*</span>' },
-              { id: 'rightSidePhoto', label: 'Car Right Side Photo <span className="text-red-500">*</span>' },
-              { id: 'rearBumper', label: 'Car Rear Bumper <span className="text-red-500">*</span>' },
-              { id: 'fitnessCertificate', label: 'Fitness Certificate <span className="text-red-500">*</span>' }
-            ].map((item) => (
-              <div key={item.id} className="space-y-3">
+            {fileUploadFields.map((item) => (
+              <div key={item.id} className={`space-y-3 ${isNotAvailable ? 'opacity-40' : ''}`}>
                 <label htmlFor={item.id} className="block text-sm font-medium text-slate-700">
-                  {item.label.includes('*') ? (
-                    <>
-                      {item.label.split('<span')[0]} <span className="text-red-500">*</span>
-                    </>
-                  ) : (
-                    item.label
-                  )}
+                  {item.label} <span className="text-red-500">*</span>
                 </label>
-                <input type="file" id={item.id} name={item.id} accept="image/*" multiple className="w-full rounded-3xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
+                <input
+                  type="file"
+                  id={item.id}
+                  name={item.id}
+                  accept="image/*"
+                  multiple
+                  disabled={isNotAvailable}
+                  className="w-full rounded-3xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed"
+                />
                 <p className="text-sm text-slate-500">Upload up to 10 supported files: image. Max 100 MB per file.</p>
               </div>
             ))}
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className={`grid gap-6 lg:grid-cols-3 ${isNotAvailable ? 'opacity-40' : ''}`}>
             <fieldset className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5">
               <legend className="text-sm font-semibold text-slate-700">Tool kit <span className="text-red-500">*</span></legend>
-              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="toolKit" value="Yes" checked={formData.toolKit === 'Yes'} onChange={handleChange} required className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
-              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="toolKit" value="No" checked={formData.toolKit === 'No'} onChange={handleChange} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="toolKit" value="Yes" checked={formData.toolKit === 'Yes'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="toolKit" value="No" checked={formData.toolKit === 'No'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
             </fieldset>
 
             <fieldset className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <legend className="text-sm font-semibold text-slate-700">Stephny <span className="text-red-500">*</span></legend>
-              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="stephny" value="Yes" checked={formData.stephny === 'Yes'} onChange={handleChange} required className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
-              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="stephny" value="No" checked={formData.stephny === 'No'} onChange={handleChange} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
+              <legend className="text-sm font-semibold text-slate-700">Stepney <span className="text-red-500">*</span></legend>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="stepney" value="Yes" checked={formData.stepney === 'Yes'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="stepney" value="No" checked={formData.stepney === 'No'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
             </fieldset>
 
             <fieldset className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5">
               <legend className="text-sm font-semibold text-slate-700">Onboard Charger <span className="text-red-500">*</span></legend>
-              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="onboardCharger" value="Yes" checked={formData.onboardCharger === 'Yes'} onChange={handleChange} required className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
-              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="onboardCharger" value="No" checked={formData.onboardCharger === 'No'} onChange={handleChange} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="onboardCharger" value="Yes" checked={formData.onboardCharger === 'Yes'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="onboardCharger" value="No" checked={formData.onboardCharger === 'No'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
             </fieldset>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className={`grid gap-6 lg:grid-cols-2 ${isNotAvailable ? 'opacity-40' : ''}`}>
             <div className="space-y-3">
               <label htmlFor="carInterior" className="block text-sm font-medium text-slate-700">Car Interior <span className="text-red-500">*</span></label>
-              <select id="carInterior" name="carInterior" value={formData.carInterior} onChange={handleChange} required className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100">
+              <select id="carInterior" name="carInterior" value={formData.carInterior} onChange={handleChange} disabled={isNotAvailable} className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed">
                 <option value="">Select status</option>
                 {interiorOptions.map((option) => (
                   <option key={option} value={option}>{option}</option>
@@ -231,7 +254,7 @@ function App() {
 
             <div className="space-y-3">
               <label htmlFor="physicalAuditPass" className="block text-sm font-medium text-slate-700">Physical Audit Pass <span className="text-red-500">*</span></label>
-              <select id="physicalAuditPass" name="physicalAuditPass" value={formData.physicalAuditPass} onChange={handleChange} required className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100">
+              <select id="physicalAuditPass" name="physicalAuditPass" value={formData.physicalAuditPass} onChange={handleChange} disabled={isNotAvailable} className="w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed">
                 <option value="">Select result</option>
                 {auditPassOptions.map((option) => (
                   <option key={option} value={option}>{option}</option>
@@ -243,12 +266,18 @@ function App() {
           <input type="hidden" name="latitude" value={formData.latitude} />
           <input type="hidden" name="longitude" value={formData.longitude} />
 
-          <button type="submit" className="w-full rounded-3xl bg-slate-950 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 focus:ring-offset-slate-50">Submit Audit</button>
+          <button
+            type="submit"
+            disabled={isNotAvailable}
+            className="w-full rounded-3xl bg-slate-950 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 focus:ring-offset-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Submit Audit
+          </button>
         </form>
 
         {status && (
           <p className={`mt-6 rounded-3xl px-5 py-4 text-center text-sm font-medium ${
-            status.startsWith('Error') ? 'bg-red-50 text-red-700' : status.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'
+            status.startsWith('Submission failed') ? 'bg-red-50 text-red-700' : status.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'
           }`}>{status}</p>
         )}
       </div>
