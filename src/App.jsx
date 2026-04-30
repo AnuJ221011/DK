@@ -13,6 +13,7 @@ const initialState = {
   toolKit: '',
   stepney: '',
   onboardCharger: '',
+  carKeys: '',
   carInterior: '',
   physicalAuditPass: ''
 }
@@ -315,7 +316,7 @@ function App() {
             ))}
           </div>
 
-          <div className={`grid gap-6 lg:grid-cols-3 ${isNotAvailable ? 'opacity-40' : ''}`}>
+          <div className={`grid gap-6 lg:grid-cols-4 ${isNotAvailable ? 'opacity-40' : ''}`}>
             <fieldset className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5">
               <legend className="text-sm font-semibold text-slate-700">Tool kit <span className="text-red-500">*</span></legend>
               <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="toolKit" value="Yes" checked={formData.toolKit === 'Yes'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
@@ -332,6 +333,12 @@ function App() {
               <legend className="text-sm font-semibold text-slate-700">Onboard Charger <span className="text-red-500">*</span></legend>
               <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="onboardCharger" value="Yes" checked={formData.onboardCharger === 'Yes'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
               <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="onboardCharger" value="No" checked={formData.onboardCharger === 'No'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
+            </fieldset>
+
+            <fieldset className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <legend className="text-sm font-semibold text-slate-700">Car Keys <span className="text-red-500">*</span></legend>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="carKeys" value="Yes" checked={formData.carKeys === 'Yes'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> Yes</label>
+              <label className="flex items-center gap-3 text-sm text-slate-700"><input type="radio" name="carKeys" value="No" checked={formData.carKeys === 'No'} onChange={handleChange} disabled={isNotAvailable} className="h-4 w-4 text-sky-600 focus:ring-sky-500" /> No</label>
             </fieldset>
           </div>
 
